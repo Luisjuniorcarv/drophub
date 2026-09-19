@@ -54,14 +54,16 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Copiar bundle standalone Next.js
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 
 USER nextjs
 
 EXPOSE 3000
+EXPOSE 80
 
-# Healthcheck nativo para EasyPanel / Docker Engine
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
+# Healthcheck resiliente que verifica a porta ativa do Next.js
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+  CMD (wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 || wget -qO- http://127.0.0.1:80/api/health >/dev/null 2>&1 || exit 1)
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server.js"]
