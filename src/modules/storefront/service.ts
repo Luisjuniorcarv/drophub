@@ -25,52 +25,61 @@ export interface CartCookieItem {
  * Retorna os dados principais da vitrine / Home da loja
  */
 export async function getStorefrontHome() {
-  const [categories, featuredProducts, recentProducts] = await Promise.all([
-    // Categorias ativas com contagem de produtos
-    prisma.category.findMany({
-      where: { active: true },
-      take: 6,
-      orderBy: { name: "asc" },
-      include: {
-        _count: {
-          select: { products: { where: { status: ProductStatus.ACTIVE, active: true } } },
+  try {
+    const [categories, featuredProducts, recentProducts] = await Promise.all([
+      // Categorias ativas com contagem de produtos
+      prisma.category.findMany({
+        where: { active: true },
+        take: 6,
+        orderBy: { name: "asc" },
+        include: {
+          _count: {
+            select: { products: { where: { status: ProductStatus.ACTIVE, active: true } } },
+          },
         },
-      },
-    }),
-    // Produtos em destaque (ativos)
-    prisma.product.findMany({
-      where: { status: ProductStatus.ACTIVE, active: true },
-      take: 8,
-      orderBy: { createdAt: "desc" },
-      include: {
-        images: { orderBy: [{ isCover: "desc" }, { position: "asc" }] },
-        category: { select: { id: true, name: true, slug: true } },
-        variants: { where: { active: true } },
-      },
-    }),
-    // Lançamentos recentes
-    prisma.product.findMany({
-      where: { status: ProductStatus.ACTIVE, active: true },
-      take: 4,
-      orderBy: { updatedAt: "desc" },
-      include: {
-        images: { orderBy: [{ isCover: "desc" }, { position: "asc" }] },
-        category: { select: { id: true, name: true, slug: true } },
-      },
-    }),
-  ]);
+      }),
+      // Produtos em destaque (ativos)
+      prisma.product.findMany({
+        where: { status: ProductStatus.ACTIVE, active: true },
+        take: 8,
+        orderBy: { createdAt: "desc" },
+        include: {
+          images: { orderBy: [{ isCover: "desc" }, { position: "asc" }] },
+          category: { select: { id: true, name: true, slug: true } },
+          variants: { where: { active: true } },
+        },
+      }),
+      // Lançamentos recentes
+      prisma.product.findMany({
+        where: { status: ProductStatus.ACTIVE, active: true },
+        take: 4,
+        orderBy: { updatedAt: "desc" },
+        include: {
+          images: { orderBy: [{ isCover: "desc" }, { position: "asc" }] },
+          category: { select: { id: true, name: true, slug: true } },
+        },
+      }),
+    ]);
 
-  return {
-    categories: categories.map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      description: c.description,
-      productsCount: c._count.products,
-    })),
-    featuredProducts: featuredProducts.map(formatProductSummary),
-    recentProducts: recentProducts.map(formatProductSummary),
-  };
+    return {
+      categories: categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        description: c.description,
+        productsCount: c._count.products,
+      })),
+      featuredProducts: featuredProducts.map(formatProductSummary),
+      recentProducts: recentProducts.map(formatProductSummary),
+    };
+  } catch (error) {
+    console.error("[STOREFRONT_HOME_ERROR]", error);
+    return {
+      categories: [],
+      featuredProducts: [],
+      recentProducts: [],
+    };
+  }
 }
 
 /**
