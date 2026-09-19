@@ -1,0 +1,46 @@
+# Node.js
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Environment Variables (Secrets)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Local Database & Backups
+.postgres_data/
+backups/
+scratch/
+
+# TypeScript & Build Caches
+*.tsbuildinfo
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+*.pem
+
+# Vitest
+coverage/

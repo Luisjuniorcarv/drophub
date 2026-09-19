@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # 1. Banco de Dados PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: drophub_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: drophub_user
+      POSTGRES_PASSWORD: drophub_secure_pass
+      POSTGRES_DB: drophub_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drophub_user -d drophub_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Aplicação DropHub
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: drophub_app
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://drophub_user:drophub_secure_pass@postgres:5432/drophub_db?schema=public"
+      JWT_SECRET: "drophub_super_secret_jwt_key_at_least_32_characters_long_2026"
+      ENCRYPTION_KEY: "drophub_super_secret_encryption_key_32_bytes_long_2026"
+      COOKIE_NAME: "drophub_admin_session"
+      NODE_ENV: "production"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+      WEBHOOK_SECRET: "drophub_webhook_secret_key_123456"
+      CRON_SECRET: "drophub_super_secure_cron_secret_key_2026"
+      N8N_WEBHOOK_URL: "http://n8n:5678/webhook/drophub-events"
+      OPENAI_API_KEY: ""
+      PAYMENT_GATEWAY: "TEST_MODE"
+
+volumes:
+  postgres_data:

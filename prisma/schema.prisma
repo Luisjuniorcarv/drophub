@@ -1,0 +1,771 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ----------------------------------------------------
+// ENUMS TIPADOS
+// ----------------------------------------------------
+
+enum Role {
+  ADMIN
+  OPERATOR
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum OrderStatus {
+  AWAITING_PAYMENT      // Aguardando pagamento
+  PAID                  // Pago
+  PROCESSING            // Processando
+  AWAITING_SUPPLIER     // Aguardando fornecedor
+  SENT_TO_SUPPLIER      // Enviado ao fornecedor
+  SHIPPED               // Enviado
+  DELIVERED             // Entregue
+  CANCELLED             // Cancelado
+  REFUNDED              // Reembolsado
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  FAILED
+  CANCELLED
+  REFUNDED
+  REJECTED
+}
+
+enum PaymentMethod {
+  PIX
+  CREDIT_CARD
+  BOLETO
+  TEST_MODE
+}
+
+enum ExpenseCategory {
+  MARKETING
+  TOOLS
+  DOMAIN
+  LOGISTICS
+  TAXES
+  REFUND
+  OTHER
+}
+
+enum AutomationStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+enum FulfillmentStatus {
+  PENDING
+  SUBMITTED
+  ACKNOWLEDGED
+  SHIPPED
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+enum StockMovementType {
+  SALE
+  RESTOCK
+  ADJUSTMENT
+  RETURN
+  CANCEL
+  CORRECTION
+}
+
+enum IntegrationStatus {
+  NOT_CONFIGURED
+  CONFIGURED
+  ACTIVE
+  ERROR
+  DISABLED
+}
+
+// ----------------------------------------------------
+// ENTIDADES
+// ----------------------------------------------------
+
+// 1. Usuários Administrativos
+model User {
+  id            String               @id @default(uuid())
+  email         String               @unique
+  passwordHash  String
+  name          String
+  role          Role                 @default(ADMIN)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  statusChanges OrderStatusHistory[]
+  stockMovements StockMovement[]
+  aiInteractions AIInteraction[]
+  productAuditLogs ProductAuditLog[]
+
+  @@index([email])
+}
+
+// 2. Fornecedores
+model Supplier {
+  id          String     @id @default(uuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  website     String?
+  notes             String?
+  active            Boolean            @default(true)
+  products          Product[]
+  supplierProducts  SupplierProduct[]
+  shipments         Shipment[]
+  fulfillmentOrders FulfillmentOrder[]
+  integration       SupplierIntegration?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([name])
+}
+
+// 3. Categorias
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  description String?
+  active      Boolean   @default(true)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([slug])
+}
+
+// 4. Produtos
+model Product {
+  id               String           @id @default(uuid())
+  name             String
+  slug             String           @unique
+  sku              String           @unique
+  description      String
+  shortDescription String?
+  categoryId       String?
+  category         Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  supplierId       String?
+  supplier         Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  costPrice        Decimal          @db.Decimal(10, 2)
+  sellingPrice     Decimal          @db.Decimal(10, 2)
+  stock            Int              @default(0)
+  status           ProductStatus    @default(ACTIVE)
+  active           Boolean          @default(true)
+  brand            String?
+  tags             String[]         @default([])
+  minPrice         Decimal?         @db.Decimal(10, 2)
+  maxPrice         Decimal?         @db.Decimal(10, 2)
+  targetMargin     Decimal?         @db.Decimal(5, 2)
+  targetMarkup     Decimal?         @db.Decimal(5, 2)
+  supplierUrl      String?
+  externalId       String?
+  images           ProductImage[]
+  variants         ProductVariant[]
+  orderItems       OrderItem[]
+  stockMovements   StockMovement[]
+  supplierProducts SupplierProduct[]
+  marketplaceListings MarketplaceListing[]
+  auditLogs        ProductAuditLog[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([slug])
+  @@index([sku])
+  @@index([status])
+  @@index([categoryId])
+  @@index([supplierId])
+}
+
+// 5. Imagens do Produto
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  isCover   Boolean  @default(false)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+// 6. Variações do Produto (Cor, Tamanho, etc.)
+model ProductVariant {
+  id             String      @id @default(uuid())
+  productId      String
+  product        Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku            String      @unique
+  name           String      // ex: "Preto / G"
+  attributesJson Json        // ex: {"cor": "Preto", "tamanho": "G"}
+  costPrice      Decimal     @db.Decimal(10, 2)
+  sellingPrice   Decimal     @db.Decimal(10, 2)
+  stock          Int             @default(0)
+  active         Boolean         @default(true)
+  orderItems     OrderItem[]
+  stockMovements StockMovement[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([productId])
+  @@index([sku])
+}
+
+// 7. Clientes
+model Customer {
+  id           String            @id @default(uuid())
+  name         String
+  email        String            @unique
+  cpf          String            @unique
+  phone        String
+  passwordHash String?
+  orders       Order[]
+  addresses    CustomerAddress[]
+  notes        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([email])
+  @@index([cpf])
+}
+
+// 8. Endereços de Clientes
+model CustomerAddress {
+  id           String   @id @default(uuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+  postalCode   String
+  isDefault    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+// 9. Pedidos
+model Order {
+  id               String               @id @default(uuid())
+  orderNumber      String               @unique // ex: "DH-1001"
+  trackingToken    String?              @unique @default(uuid()) // Token de acesso seguro para rastreio de visitantes
+  customerId       String
+  customer         Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  status           OrderStatus          @default(AWAITING_PAYMENT)
+  subtotalAmount   Decimal              @db.Decimal(10, 2)
+  shippingCost     Decimal              @db.Decimal(10, 2) @default(0.00)
+  discountAmount   Decimal              @db.Decimal(10, 2) @default(0.00)
+  totalAmount      Decimal              @db.Decimal(10, 2)
+  totalCostAmount  Decimal              @db.Decimal(10, 2)
+  estimatedProfit  Decimal              @db.Decimal(10, 2)
+  marginPercentage Decimal              @db.Decimal(5, 2)
+  markupPercentage Decimal              @db.Decimal(5, 2)
+  shippingAddress   Json                 // Snapshot do endereço de entrega no momento da compra
+  notes             String?
+  items             OrderItem[]
+  payments          Payment[]
+  shipments         Shipment[]
+  fulfillmentOrders FulfillmentOrder[]
+  expenses          Expense[]
+  statusHistory     OrderStatusHistory[]
+  stockMovements    StockMovement[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([orderNumber])
+  @@index([status])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+// 10. Itens do Pedido (Snapshot no momento da venda)
+model OrderItem {
+  id         String          @id @default(uuid())
+  orderId    String
+  order      Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variantId  String?
+  variant    ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  sku        String
+  name       String
+  unitCost   Decimal         @db.Decimal(10, 2)
+  unitPrice  Decimal         @db.Decimal(10, 2)
+  quantity   Int
+  totalCost  Decimal         @db.Decimal(10, 2)
+  totalPrice Decimal         @db.Decimal(10, 2)
+  profit           Decimal           @db.Decimal(10, 2)
+  fulfillmentItems FulfillmentItem[]
+  stockMovements   StockMovement[]
+  createdAt        DateTime          @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// 11. Histórico de Alterações de Status do Pedido (Auditoria Imutável)
+model OrderStatusHistory {
+  id              String      @id @default(uuid())
+  orderId         String
+  order           Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  previousStatus  OrderStatus
+  newStatus       OrderStatus
+  reason          String?
+  changedByUserId String?
+  changedByUser   User?       @relation(fields: [changedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime    @default(now())
+
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+// 12. Pagamentos
+model Payment {
+  id              String        @id @default(uuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  gateway         String        @default("TEST_GATEWAY") // "TEST_GATEWAY", "MERCADO_PAGO"
+  method          PaymentMethod @default(TEST_MODE)
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?
+  idempotencyKey  String?       @unique
+  amount          Decimal       @db.Decimal(10, 2)
+  qrCode          String?       // Copia e Cola Pix
+  qrCodeBase64    String?       // Imagem Base64 do QR Code Pix
+  expiresAt       DateTime?
+  paidAt          DateTime?
+  failedAt        DateTime?
+  cancelledAt     DateTime?
+  refundedAt      DateTime?
+  failureReason   String?
+  gatewayResponse Json?
+  metadataJson    Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+  @@index([transactionId])
+}
+
+// 13. Envios
+model Shipment {
+  id                  String     @id @default(uuid())
+  orderId             String
+  order               Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplierId          String?
+  supplier            Supplier?  @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  carrier             String?           // ex: "Correios", "Cainiao", "J&T Express"
+  trackingNumber      String?
+  trackingUrl         String?
+  status              String            @default("PREPARING") // PREPARING, SHIPPED, DELIVERED
+  fulfillmentOrderId  String?
+  fulfillmentOrder    FulfillmentOrder? @relation(fields: [fulfillmentOrderId], references: [id], onDelete: SetNull)
+  shippedAt           DateTime?
+  estimatedDeliveryAt DateTime?
+  deliveredAt         DateTime?
+  trackings           Tracking[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([orderId])
+  @@index([trackingNumber])
+  @@index([fulfillmentOrderId])
+}
+
+// 14. Eventos de Rastreamento Detalhados
+model Tracking {
+  id             String   @id @default(uuid())
+  shipmentId     String
+  shipment       Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  status         String
+  description    String
+  location       String?
+  timestamp      DateTime @default(now())
+  idempotencyKey String?  @unique
+  rawDataJson    Json?
+  createdAt      DateTime @default(now())
+
+  @@index([shipmentId])
+  @@index([timestamp])
+  @@index([idempotencyKey])
+}
+
+// 15. Despesas Operacionais
+model Expense {
+  id          String          @id @default(uuid())
+  title       String
+  category    ExpenseCategory @default(OTHER)
+  amount      Decimal         @db.Decimal(10, 2)
+  date        DateTime        @default(now())
+  description String?
+  orderId     String?
+  order       Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([date])
+  @@index([category])
+  @@index([orderId])
+}
+
+// 16. Logs de Automação (n8n / Webhooks)
+model AutomationLog {
+  id           String           @id @default(uuid())
+  source       String           // "INTERNAL", "N8N", "WEBHOOK"
+  eventType    String           // "order.created", "payment.approved"
+  status       AutomationStatus @default(PENDING)
+  payloadJson  Json
+  responseJson Json?
+  errorMessage String?
+  createdAt    DateTime         @default(now())
+
+  @@index([source])
+  @@index([eventType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// 17. Registro de Gerações por IA
+model AiGeneration {
+  id            String   @id @default(uuid())
+  promptType    String   // "DESCRIPTION", "TITLE", "SEO", "AD_COPY", "FAQ", "PRICING"
+  inputDataJson Json
+  resultText    String
+  tokensUsed    Int?
+  modelName     String?
+  createdAt     DateTime @default(now())
+
+  @@index([promptType])
+  @@index([createdAt])
+}
+
+// 18. Eventos de Webhook Recebidos (Inbound)
+model WebhookEvent {
+  id           String   @id @default(uuid())
+  eventType    String
+  source       String
+  payloadJson  Json
+  status       String   @default("RECEIVED") // RECEIVED, PROCESSED, FAILED
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  @@index([eventType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// 19. Endpoints de Webhooks Cadastrados (n8n / Sistemas Externos)
+model WebhookEndpoint {
+  id                 String            @id @default(uuid())
+  name               String
+  url                String
+  secret             String            // HMAC Secret
+  events             String[]          // Ex: ["ORDER_PAID", "ORDER_SHIPPED"] ou ["*"]
+  active             Boolean           @default(true)
+  description        String?
+  lastTriggeredAt    DateTime?
+  lastDeliveryStatus String?           // "SUCCESS", "FAILED"
+  deliveries         WebhookDelivery[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([active])
+  @@index([name])
+}
+
+// 20. Fila de Eventos Transacionais (Transactional Outbox Pattern)
+model OutboxEvent {
+  id            String            @id @default(uuid())
+  eventType     String            // Ex: "ORDER_PAID", "PRODUCT_CREATED"
+  entityType    String            // Ex: "Order", "Product", "Customer"
+  entityId      String            // ID da entidade correspondente
+  payload       Json              // Payload do evento (LGPD minimizado)
+  status        String            @default("PENDING") // "PENDING", "PROCESSED", "FAILED"
+  attempts      Int               @default(0)
+  maxAttempts   Int               @default(3)
+  nextAttemptAt DateTime?
+  errorMessage  String?
+  processedAt   DateTime?
+  deliveries    WebhookDelivery[]
+  createdAt     DateTime          @default(now())
+
+  @@index([status])
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([nextAttemptAt])
+}
+
+// 21. Histórico de Auditoria e Entregas de Webhooks
+model WebhookDelivery {
+  id             String          @id @default(uuid())
+  eventId        String
+  event          OutboxEvent     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  webhookId      String
+  webhook        WebhookEndpoint @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  status         String          @default("PENDING") // "SUCCESS", "FAILED", "RETRYING"
+  attemptNumber  Int             @default(1)
+  statusCode     Int?            // HTTP Status retornado
+  durationMs     Int?            // Tempo de resposta em ms
+  requestHeaders Json?           // Headers enviados (sem expor segredos)
+  requestBody    Json?           // Payload transmitido
+  responseBody   String?         // Resposta resumida
+  errorMessage   String?
+  deliveredAt    DateTime?
+  createdAt      DateTime        @default(now())
+
+  @@index([eventId])
+  @@index([webhookId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// 22. Configurações Globais do Sistema
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  type        String   @default("STRING")
+  isSecret    Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+}
+
+// 23. Ordens de Fulfillment (Integração Operacional com Fornecedores)
+model FulfillmentOrder {
+  id                  String               @id @default(uuid())
+  orderId             String
+  order               Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplierId          String?
+  supplier            Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  status              FulfillmentStatus    @default(PENDING)
+  externalOrderId     String?              // ID do pedido gerado no sistema do fornecedor
+  supplierOrderNumber String?              // Código/número amigável retornado pelo fornecedor (ex: SUP-12345)
+  attempts            Int                  @default(0)
+  maxAttempts         Int                  @default(3)
+  nextAttemptAt       DateTime?
+  submittedAt         DateTime?
+  acknowledgedAt      DateTime?
+  shippedAt           DateTime?
+  deliveredAt         DateTime?
+  cancelledAt         DateTime?
+  failureReason       String?
+  metadataJson        Json?
+  items               FulfillmentItem[]
+  shipments           Shipment[]
+  history             FulfillmentHistory[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@unique([orderId, supplierId])
+  @@index([orderId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([externalOrderId])
+  @@index([nextAttemptAt])
+}
+
+// 24. Itens do Fulfillment (Snapshot imutável do momento da criação)
+model FulfillmentItem {
+  id                 String           @id @default(uuid())
+  fulfillmentOrderId String
+  fulfillmentOrder   FulfillmentOrder @relation(fields: [fulfillmentOrderId], references: [id], onDelete: Cascade)
+  orderItemId        String
+  orderItem          OrderItem        @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  productId          String
+  variantId          String?
+  sku                String
+  name               String
+  quantity           Int
+  unitCostSnapshot   Decimal          @db.Decimal(10, 2)
+  metadataJson       Json?
+  createdAt          DateTime         @default(now())
+
+  @@index([fulfillmentOrderId])
+  @@index([orderItemId])
+}
+
+// 25. Histórico de Transições do Fulfillment (Auditoria Imutável)
+model FulfillmentHistory {
+  id                 String           @id @default(uuid())
+  fulfillmentOrderId String
+  fulfillmentOrder   FulfillmentOrder @relation(fields: [fulfillmentOrderId], references: [id], onDelete: Cascade)
+  previousStatus     FulfillmentStatus
+  newStatus          FulfillmentStatus
+  reason             String?
+  changedByUserId    String?
+  createdAt          DateTime         @default(now())
+
+  @@index([fulfillmentOrderId])
+  @@index([createdAt])
+}
+
+// 26. Movimentações de Estoque (Auditoria e Ledger Imutável)
+model StockMovement {
+  id             String            @id @default(uuid())
+  productId      String
+  product        Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variantId      String?
+  variant        ProductVariant?   @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  orderId        String?
+  order          Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderItemId    String?
+  orderItem      OrderItem?        @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type           StockMovementType
+  quantity       Int               // Positivo (incremento) ou Negativo (decremento)
+  balanceBefore  Int               // Saldo antes da operação
+  balanceAfter   Int               // Saldo após a operação
+  reason         String?           // Motivo / Observação
+  idempotencyKey String?           @unique // Chave única para idempotência operacional
+  metadataJson   Json?             // Metadados adicionais (ex: custo unitário, payload de origem)
+  createdAt      DateTime          @default(now())
+
+  @@index([productId])
+  @@index([variantId])
+  @@index([orderId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// 27. Observabilidade e Auditoria de Interações de IA
+model AIInteraction {
+  id            String   @id @default(uuid())
+  assistant     String   // PRODUCT | PRICING | CUSTOMER | FINANCIAL | OPERATIONS
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  provider      String   // OPENAI | TEST
+  model         String
+  promptSummary String
+  response      String   @db.Text
+  tokensUsed    Int?
+  durationMs    Int
+  success       Boolean  @default(true)
+  errorMessage  String?
+  metadataJson  Json?
+  createdAt     DateTime @default(now())
+
+  @@index([assistant])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// 28. Tokens de Recuperação de Senha (Segurança com Hash e Uso Único)
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([tokenHash])
+}
+
+// 29. Relacionamento Produto x Fornecedor (Dropshipping & Multi-sourcing)
+model SupplierProduct {
+  id                String    @id @default(uuid())
+  productId         String
+  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplierId        String
+  supplier          Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  externalProductId String?
+  externalSku       String?
+  supplierUrl       String?
+  supplierCost      Decimal   @db.Decimal(10, 2)
+  supplierStock     Int       @default(0)
+  isAvailable       Boolean   @default(true)
+  lastSyncedAt      DateTime?
+  lastSyncError     String?
+  metadataJson      Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([productId, supplierId])
+  @@index([productId])
+  @@index([supplierId])
+  @@index([externalSku])
+}
+
+// 30. Listagens e Publicações em Marketplaces
+model MarketplaceListing {
+  id                String    @id @default(uuid())
+  productId         String
+  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  channel           String    // "SHOPEE", "MERCADO_LIVRE", "AMAZON", "TEST"
+  externalListingId String?
+  status            String    @default("UNPUBLISHED") // "UNPUBLISHED", "ACTIVE", "PAUSED", "FAILED"
+  marketplacePrice  Decimal?  @db.Decimal(10, 2)
+  marketplaceStock  Int?
+  lastSyncedAt      DateTime?
+  syncError         String?
+  metadataJson      Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([productId, channel])
+  @@index([productId])
+  @@index([channel])
+  @@index([status])
+}
+
+// 31. Auditoria de Alterações de Produtos do Catálogo
+model ProductAuditLog {
+  id              String   @id @default(uuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  field           String   // "SELLING_PRICE", "COST_PRICE", "STATUS", "SUPPLIER", "STOCK", "SKU"
+  oldValue        String?
+  newValue        String?
+  changedByUserId String?
+  user            User?    @relation(fields: [changedByUserId], references: [id], onDelete: SetNull)
+  reason          String?
+  createdAt       DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
+  @@index([field])
+}
+
+// 32. Configuração e Credenciais de Integração com Fornecedores
+model SupplierIntegration {
+  id                   String            @id @default(uuid())
+  supplierId           String            @unique
+  supplier             Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  provider             String            @default("TEST") // "TEST", "GENERIC_REST", "BLING", "TINY", etc.
+  status               IntegrationStatus @default(NOT_CONFIGURED)
+  encryptedCredentials String?           // Credenciais criptografadas em AES-256-GCM (JSON encriptado)
+  configurationJson    Json?             // Configurações públicas/não-secretas (ex: baseUrl, timeoutMs, rateLimit)
+  lastTestedAt         DateTime?
+  lastError            String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  @@index([provider])
+  @@index([status])
+}
+
