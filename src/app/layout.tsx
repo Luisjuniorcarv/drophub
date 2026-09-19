@@ -3,6 +3,8 @@ import "./globals.css";
 import { CartProvider } from "@/components/storefront/CartContext";
 import { CartDrawer } from "@/components/storefront/CartDrawer";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "DropHub - Loja Oficial & Plataforma de E-commerce",
   description: "Plataforma completa e profissional para operação de dropshipping e comércio eletrônico com os melhores produtos.",

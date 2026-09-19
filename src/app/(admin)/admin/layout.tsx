@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/modules/auth/service";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminNavbar } from "@/components/admin/AdminNavbar";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({
   children,
 }: {

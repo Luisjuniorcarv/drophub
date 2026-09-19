@@ -5,7 +5,7 @@ import { ProductCard } from "@/components/storefront/ProductCard";
 import { getStorefrontHome } from "@/modules/storefront/service";
 import { ArrowRight, Sparkles, TrendingUp, ShieldCheck, Zap } from "lucide-react";
 
-export const revalidate = 60; // Revalida a cada 60s
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const { categories, featuredProducts, recentProducts } = await getStorefrontHome();
