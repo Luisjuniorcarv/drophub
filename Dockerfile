@@ -14,8 +14,19 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Aceitar Build Args do EasyPanel com fallbacks seguros para a fase de compilação estática
+ARG DATABASE_URL="postgresql://postgres:postgres@localhost:5432/drophub?schema=public"
+ARG JWT_SECRET="drophub_super_secret_jwt_key_at_least_32_characters_long_2026"
+ARG ENCRYPTION_KEY="drophub_super_secret_encryption_key_32_bytes_long_2026"
+ARG NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV DATABASE_URL=$DATABASE_URL
+ENV JWT_SECRET=$JWT_SECRET
+ENV ENCRYPTION_KEY=$ENCRYPTION_KEY
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
 # Gerar Prisma Client e compilar Next.js em modo Standalone
 RUN npx prisma generate
@@ -33,18 +44,18 @@ ENV HOSTNAME="0.0.0.0"
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copiar scripts operacionais e assets públicos
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/scripts ./scripts
+# Copiar scripts operacionais e assets públicos com permissões corretas
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder /app/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Copiar bundle standalone Next.js e CLI do Prisma para execuções operacionais
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
-COPY --from=deps /app/node_modules/.bin ./node_modules/.bin
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
 
 USER nextjs
 
