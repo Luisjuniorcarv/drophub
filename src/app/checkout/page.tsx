@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Header } from "@/components/storefront/Header";
 import { Footer } from "@/components/storefront/Footer";
 import { useCart } from "@/components/storefront/CartContext";
+import { trackFbEvent } from "@/components/analytics/MetaPixel";
 import {
   ShieldCheck,
   CreditCard,
@@ -48,6 +49,14 @@ export default function CheckoutPage() {
 
   // Load existing customer data if logged in
   useEffect(() => {
+    if (cart.items.length > 0) {
+      trackFbEvent("InitiateCheckout", {
+        num_items: cart.itemsCount,
+        value: cart.totalAmount,
+        currency: "BRL",
+      });
+    }
+
     fetch("/api/auth/customer/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { CartProvider } from "@/components/storefront/CartContext";
 import { CartDrawer } from "@/components/storefront/CartDrawer";
+import { MetaPixel } from "@/components/analytics/MetaPixel";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased font-sans">
+        <MetaPixel />
         <CartProvider>
           {children}
           <CartDrawer />

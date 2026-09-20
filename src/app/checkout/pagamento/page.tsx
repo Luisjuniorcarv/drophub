@@ -17,6 +17,7 @@ import {
   Clock,
   RefreshCw,
 } from "lucide-react";
+import { trackFbEvent } from "@/components/analytics/MetaPixel";
 
 function PaymentContent() {
   const router = useRouter();
@@ -45,8 +46,13 @@ function PaymentContent() {
             setPayment(data.order.payments[0]);
           }
 
-          // Se já estiver pago, redireciona para a página do pedido
+          // Se já estiver pago, dispara evento do Pixel e redireciona para a página do pedido
           if (data.order.status === "PAID") {
+            trackFbEvent("Purchase", {
+              value: Number(data.order.totalAmount),
+              currency: "BRL",
+              order_id: data.order.id,
+            });
             setTimeout(() => {
               router.push(`/pedido/${orderId}${token ? `?token=${encodeURIComponent(token)}` : ""}`);
             }, 3000);

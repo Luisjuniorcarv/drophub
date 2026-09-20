@@ -15,6 +15,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useCart } from "@/components/storefront/CartContext";
+import { trackFbEvent } from "@/components/analytics/MetaPixel";
 
 interface ProductViewProps {
   product: {
@@ -74,6 +75,13 @@ export function ProductView({ product }: ProductViewProps) {
     try {
       setIsAdding(true);
       await addItem(product.id, selectedVariantId, quantity);
+      trackFbEvent("AddToCart", {
+        content_name: product.name,
+        content_ids: [product.id],
+        content_type: "product",
+        value: currentPrice * quantity,
+        currency: "BRL",
+      });
       setAddedFeedback(true);
       setTimeout(() => setAddedFeedback(false), 2500);
     } finally {
@@ -86,6 +94,13 @@ export function ProductView({ product }: ProductViewProps) {
     try {
       setIsBuyingNow(true);
       await addItem(product.id, selectedVariantId, quantity);
+      trackFbEvent("AddToCart", {
+        content_name: product.name,
+        content_ids: [product.id],
+        content_type: "product",
+        value: currentPrice * quantity,
+        currency: "BRL",
+      });
       router.push("/checkout");
     } finally {
       setIsBuyingNow(false);
