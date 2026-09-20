@@ -258,7 +258,7 @@ export function ProductView({ product }: ProductViewProps) {
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 text-xs text-slate-600 dark:text-slate-400">
           <div className="flex items-center gap-3">
             <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Frete Grátis para todo o Brasil em compras acima de R$ 199.</span>
+            <span>Frete Grátis para todo o Brasil.</span>
           </div>
           <div className="flex items-center gap-3">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />

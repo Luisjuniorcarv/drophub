@@ -14,7 +14,7 @@ export function Footer() {
             </div>
             <div>
               <h4 className="font-semibold text-white">Frete Grátis</h4>
-              <p className="text-xs text-slate-400 mt-0.5">Em compras acima de R$ 199 para todo o Brasil.</p>
+              <p className="text-xs text-slate-400 mt-0.5">Frete Grátis para todo o Brasil em todos os pedidos.</p>
             </div>
           </div>
 

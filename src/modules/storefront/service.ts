@@ -296,8 +296,8 @@ export async function getStorefrontCart(cookieItems: CartCookieItem[]) {
   }
 
   const subtotalAmount = Number(subtotal.toFixed(2));
-  // Política de frete: Frete Grátis para compras a partir de R$ 199,00; caso contrário R$ 15,00
-  const shippingCost = subtotalAmount >= 199 || subtotalAmount === 0 ? 0 : 15.0;
+  // Política de frete: Frete Grátis para todo o Brasil
+  const shippingCost = 0.0;
   const totalAmount = Number((subtotalAmount + shippingCost).toFixed(2));
 
   return {
@@ -466,7 +466,7 @@ export async function createStorefrontOrder(input: {
 
     // 4. Cálculos Financeiros
     const finalSubtotal = Number(subtotal.toFixed(2));
-    const finalShipping = finalSubtotal >= 199 || finalSubtotal === 0 ? 0 : 15.0;
+    const finalShipping = 0.0;
     const finalDiscount = 0.0;
     const finalTotal = Number((finalSubtotal + finalShipping - finalDiscount).toFixed(2));
     const finalTotalCost = Number(totalCost.toFixed(2));

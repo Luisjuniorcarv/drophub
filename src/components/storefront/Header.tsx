@@ -49,7 +49,7 @@ export function Header() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-              <Truck className="w-3.5 h-3.5" /> Frete Grátis acima de R$ 199
+              <Truck className="w-3.5 h-3.5" /> Frete Grátis para todo o Brasil
             </span>
             <span className="hidden sm:inline text-slate-500">•</span>
             <span className="hidden sm:flex items-center gap-1 text-slate-400">

@@ -72,25 +72,10 @@ export default function CartPage() {
             {/* Items Column */}
             <div className="lg:col-span-8 space-y-4">
               {/* Free Shipping Alert */}
-              {freeShippingDifference > 0 ? (
-                <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl flex items-center gap-3 text-xs text-amber-800 dark:text-amber-300">
-                  <Truck className="w-5 h-5 shrink-0 text-amber-600" />
-                  <span>
-                    Adicione mais{" "}
-                    <strong>
-                      {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
-                        freeShippingDifference
-                      )}
-                    </strong>{" "}
-                    para garantir <strong>Frete Grátis</strong> para todo o Brasil!
-                  </span>
-                </div>
-              ) : (
-                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 rounded-2xl flex items-center gap-3 text-xs text-emerald-800 dark:text-emerald-300 font-medium">
-                  <Truck className="w-5 h-5 shrink-0 text-emerald-600" />
-                  <span>Parabéns! Seu pedido atingiu o valor para <strong>Frete Grátis</strong>.</span>
-                </div>
-              )}
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 rounded-2xl flex items-center gap-3 text-xs text-emerald-800 dark:text-emerald-300 font-medium">
+                <Truck className="w-5 h-5 shrink-0 text-emerald-600" />
+                <span>Parabéns! Seu pedido tem <strong>Frete Grátis</strong> para todo o Brasil.</span>
+              </div>
 
               {/* Items Card */}
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/80 shadow-sm">
