@@ -10,6 +10,7 @@ import {
 } from "../types";
 import { PaymentStatus, PaymentMethod } from "@prisma/client";
 import crypto from "crypto";
+import QRCode from "qrcode";
 
 export class TestGateway implements PaymentGateway {
   readonly name = PAYMENT_GATEWAYS.TEST_GATEWAY;
@@ -22,9 +23,15 @@ export class TestGateway implements PaymentGateway {
     if (input.method === PaymentMethod.PIX) {
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 min
       const qrCode = `00020126580014BR.GOV.BCB.PIX0136test-drophub-pix-${input.orderNumber}520400005303986540${numAmount.toFixed(2)}5802BR5915DropHub Commer6009Sao Paulo62070503***6304`;
-      const qrCodeBase64 = Buffer.from(
-        `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#fff"/><text x="20" y="100" fill="#000" font-size="12">Pix DH-${input.orderNumber}</text></svg>`
-      ).toString("base64");
+      let qrCodeBase64: string;
+      try {
+        const dataUrl = await QRCode.toDataURL(qrCode, { width: 300, margin: 2 });
+        qrCodeBase64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+      } catch {
+        qrCodeBase64 = Buffer.from(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#fff"/><text x="20" y="100" fill="#000" font-size="12">Pix DH-${input.orderNumber}</text></svg>`
+        ).toString("base64");
+      }
 
       return {
         success: true,

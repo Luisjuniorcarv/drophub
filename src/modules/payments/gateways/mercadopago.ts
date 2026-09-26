@@ -15,15 +15,27 @@ export class MercadoPagoGateway implements PaymentGateway {
   readonly name = PAYMENT_GATEWAYS.MERCADO_PAGO;
 
   private get accessToken(): string {
-    return process.env.MERCADOPAGO_ACCESS_TOKEN || "";
+    return (
+      process.env.MERCADO_PAGO_ACCESS_TOKEN ||
+      process.env.MERCADOPAGO_ACCESS_TOKEN ||
+      ""
+    );
   }
 
   private get webhookSecret(): string {
-    return process.env.MERCADOPAGO_WEBHOOK_SECRET || "";
+    return (
+      process.env.MERCADO_PAGO_WEBHOOK_SECRET ||
+      process.env.MERCADOPAGO_WEBHOOK_SECRET ||
+      ""
+    );
   }
 
   private get baseUrl(): string {
-    return process.env.MERCADOPAGO_BASE_URL || "https://api.mercadopago.com";
+    return (
+      process.env.MERCADO_PAGO_BASE_URL ||
+      process.env.MERCADOPAGO_BASE_URL ||
+      "https://api.mercadopago.com"
+    );
   }
 
   private mapMercadoPagoStatus(mpStatus: string): PaymentStatus {

@@ -822,10 +822,12 @@ export default function OrdersPage() {
                                   src={
                                     pmt.qrCodeBase64.startsWith("data:")
                                       ? pmt.qrCodeBase64
+                                      : pmt.qrCodeBase64.startsWith("PHN2Zy") || pmt.qrCodeBase64.startsWith("PD94bWw")
+                                      ? `data:image/svg+xml;base64,${pmt.qrCodeBase64}`
                                       : `data:image/png;base64,${pmt.qrCodeBase64}`
                                   }
                                   alt="Pix QR Code"
-                                  className="w-32 h-32 rounded bg-white p-1 shadow-md"
+                                  className="w-32 h-32 rounded bg-white p-1 shadow-md object-contain"
                                 />
                               )}
 

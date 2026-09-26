@@ -23,6 +23,15 @@ describe("Payment Gateway & Adapters Unit Tests", () => {
       expect(gw.name).toBe(PAYMENT_GATEWAYS.MERCADO_PAGO);
       expect(gw).toBeInstanceOf(MercadoPagoGateway);
     });
+
+    it("should read PAYMENT_GATEWAY from process.env when gatewayName is not provided", () => {
+      const originalEnv = process.env.PAYMENT_GATEWAY;
+      process.env.PAYMENT_GATEWAY = "MERCADO_PAGO";
+      const gw = getPaymentGateway();
+      expect(gw.name).toBe(PAYMENT_GATEWAYS.MERCADO_PAGO);
+      expect(gw).toBeInstanceOf(MercadoPagoGateway);
+      process.env.PAYMENT_GATEWAY = originalEnv;
+    });
   });
 
   describe("TestGateway Adapter", () => {

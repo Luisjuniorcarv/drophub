@@ -17,6 +17,7 @@ import {
   Clock,
   RefreshCw,
 } from "lucide-react";
+import QRCode from "qrcode";
 import { trackFbEvent } from "@/components/analytics/MetaPixel";
 
 function PaymentContent() {
@@ -31,6 +32,7 @@ function PaymentContent() {
   const [errorMessage, setErrorMessage] = useState("");
   const [copiedPix, setCopiedPix] = useState(false);
   const [isProcessingCard, setIsProcessingCard] = useState(false);
+  const [qrCodeImageUrl, setQrCodeImageUrl] = useState<string>("");
 
   // Load Order and Payment
   async function fetchStatus() {
@@ -80,6 +82,47 @@ function PaymentContent() {
 
     return () => clearInterval(interval);
   }, [orderId, token]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadQrCode() {
+      if (payment?.qrCodeBase64) {
+        const raw = payment.qrCodeBase64.trim();
+        if (raw.startsWith("data:")) {
+          setQrCodeImageUrl(raw);
+          return;
+        }
+        if (raw.startsWith("PHN2Zy") || raw.startsWith("PD94bWw")) {
+          setQrCodeImageUrl(`data:image/svg+xml;base64,${raw}`);
+          return;
+        }
+        setQrCodeImageUrl(`data:image/png;base64,${raw}`);
+        return;
+      }
+
+      if (payment?.qrCode) {
+        try {
+          const generated = await QRCode.toDataURL(payment.qrCode, {
+            width: 320,
+            margin: 2,
+            color: { dark: "#000000", light: "#ffffff" },
+          });
+          if (!isCancelled) {
+            setQrCodeImageUrl(generated);
+          }
+        } catch (err) {
+          console.error("Falha ao gerar QR Code local:", err);
+        }
+      }
+    }
+
+    loadQrCode();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [payment?.qrCodeBase64, payment?.qrCode]);
 
   function handleCopyPix() {
     if (payment?.qrCode) {
@@ -220,17 +263,30 @@ function PaymentContent() {
 
               {/* QR Code Presentation */}
               <div className="flex flex-col items-center justify-center text-center space-y-4 py-2">
-                <div className="w-52 h-52 bg-white p-3 rounded-2xl border-2 border-emerald-500/30 shadow-md flex items-center justify-center">
-                  {payment?.qrCodeBase64 ? (
+                <div className="w-52 h-52 bg-white p-3 rounded-2xl border-2 border-emerald-500/30 shadow-md flex items-center justify-center overflow-hidden">
+                  {qrCodeImageUrl ? (
                     <img
-                      src={`data:image/png;base64,${payment.qrCodeBase64}`}
+                      src={qrCodeImageUrl}
                       alt="QR Code Pix"
                       className="w-full h-full object-contain"
+                      onError={async () => {
+                        if (payment?.qrCode) {
+                          try {
+                            const fallback = await QRCode.toDataURL(payment.qrCode, {
+                              width: 320,
+                              margin: 2,
+                            });
+                            setQrCodeImageUrl(fallback);
+                          } catch (err) {
+                            console.error("Falha no fallback de imagem do QR Code:", err);
+                          }
+                        }
+                      }}
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center text-slate-400 text-xs">
-                      <QrCode className="w-16 h-16 text-emerald-600 mb-2" />
-                      <span>QR Code Pix</span>
+                      <QrCode className="w-16 h-16 text-emerald-600 mb-2 animate-pulse" />
+                      <span>Gerando QR Code Pix...</span>
                     </div>
                   )}
                 </div>
