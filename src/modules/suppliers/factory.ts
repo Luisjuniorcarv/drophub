@@ -2,6 +2,7 @@ import { SupplierAdapter } from "./adapters/supplier-adapter";
 import { TestSupplierAdapter } from "./adapters/test-supplier-adapter";
 import { AliExpressAdapter } from "./adapters/aliexpress-adapter";
 import { CJDropshippingAdapter } from "./adapters/cj-dropshipping-adapter";
+import { ShopeeAdapter } from "./adapters/shopee-adapter";
 import {
   SupplierCapability,
   SupplierProviderDefinition,
@@ -12,6 +13,7 @@ import {
 let globalTestAdapterInstance: TestSupplierAdapter | null = null;
 let globalAliExpressAdapterInstance: AliExpressAdapter | null = null;
 let globalCJDropshippingAdapterInstance: CJDropshippingAdapter | null = null;
+let globalShopeeAdapterInstance: ShopeeAdapter | null = null;
 
 /**
  * Catálogo Oficial de Provedores de Fornecedores Suportados pelo DropHub
@@ -21,6 +23,14 @@ export const REGISTERED_SUPPLIER_PROVIDERS: readonly SupplierProviderDefinition[
     key: "ALIEXPRESS",
     name: "AliExpress & DSers (Dropshipping Automático)",
     description: "Automação completa para envio de pedidos e compras no AliExpress via DSers/Webhook.",
+    capabilities: ALL_SUPPLIER_CAPABILITIES,
+    isAvailable: true,
+    isMock: false,
+  },
+  {
+    key: "SHOPEE",
+    name: "Shopee Brasil & Dropshipping",
+    description: "Integração para faturamento e despacho de pedidos na Shopee via Open Platform e Webhooks.",
     capabilities: ALL_SUPPLIER_CAPABILITIES,
     isAvailable: true,
     isMock: false,
@@ -228,6 +238,13 @@ export function getSupplierAdapter(providerOrSupplierName?: string | null): Supp
         globalCJDropshippingAdapterInstance = new CJDropshippingAdapter();
       }
       return globalCJDropshippingAdapterInstance;
+    case "SHOPEE":
+    case "SHIPPIE":
+    case "SHOPPEE":
+      if (!globalShopeeAdapterInstance) {
+        globalShopeeAdapterInstance = new ShopeeAdapter();
+      }
+      return globalShopeeAdapterInstance;
     case "TEST":
     case "TEST_SUPPLIER":
     case "DEFAULT":
