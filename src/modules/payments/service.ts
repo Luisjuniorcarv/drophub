@@ -219,6 +219,22 @@ export async function createCheckoutPayment(params: CheckoutPaymentParams): Prom
       return payment;
     });
 
+    if (gatewayResult.status === PaymentStatus.APPROVED) {
+      try {
+        const { orchestratePaidOrderFulfillment } = await import("@/modules/fulfillment/service");
+        await orchestratePaidOrderFulfillment(order.id);
+      } catch (orchErr) {
+        console.error(`[AUTO_FULFILLMENT_ERROR] Falha ao orquestrar fulfillment do pedido ${order.id}:`, orchErr);
+      }
+
+      try {
+        const { processOutboxEvents } = await import("@/modules/automations/dispatcher");
+        await processOutboxEvents(10);
+      } catch (outboxErr) {
+        console.error(`[AUTO_OUTBOX_ERROR] Falha ao despachar outbox do pedido ${order.id}:`, outboxErr);
+      }
+    }
+
     return {
       payment: savedPayment,
       gatewayResult,
@@ -462,6 +478,23 @@ export async function processPaymentWebhook(params: {
       });
     }
   });
+
+  // 7. Auto-disparo do fulfillment imediato se o pedido foi aprovado
+  if (targetStatus === PaymentStatus.APPROVED && payment?.orderId) {
+    try {
+      const { orchestratePaidOrderFulfillment } = await import("@/modules/fulfillment/service");
+      await orchestratePaidOrderFulfillment(payment.orderId);
+    } catch (orchErr) {
+      console.error(`[AUTO_FULFILLMENT_ERROR] Falha ao orquestrar fulfillment do pedido ${payment.orderId}:`, orchErr);
+    }
+
+    try {
+      const { processOutboxEvents } = await import("@/modules/automations/dispatcher");
+      await processOutboxEvents(10);
+    } catch (outboxErr) {
+      console.error(`[AUTO_OUTBOX_ERROR] Falha ao despachar outbox do pedido ${payment.orderId}:`, outboxErr);
+    }
+  }
 
   return {
     success: true,

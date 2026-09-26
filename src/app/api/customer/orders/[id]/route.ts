@@ -13,11 +13,44 @@ export async function GET(
 
     const session = await getCustomerSession();
 
-    const order = await getStorefrontOrder({
+    let order = await getStorefrontOrder({
       orderId: id,
       customerId: session?.id || null,
       trackingToken: trackingToken || null,
     });
+
+    // Auto-sync em tempo real: se o pedido ainda não consta como PAID e tem transação no gateway
+    if (order && order.status !== "PAID" && (order as any).payments?.length > 0) {
+      const pendingPayment = (order as any).payments.find(
+        (p: any) => p.status === "PENDING" && p.transactionId
+      );
+      if (pendingPayment) {
+        try {
+          const { getPaymentGateway } = await import("@/modules/payments/gateway-factory");
+          const gateway = getPaymentGateway(pendingPayment.gateway);
+          const realPayment = await gateway.getPayment(pendingPayment.transactionId);
+          if (realPayment && realPayment.status === "APPROVED") {
+            const { processPaymentWebhook } = await import("@/modules/payments/service");
+            await processPaymentWebhook({
+              gatewayName: pendingPayment.gateway,
+              rawBody: JSON.stringify({
+                action: "payment.updated",
+                type: "payment",
+                data: { id: pendingPayment.transactionId },
+              }),
+              headers: {},
+            });
+            order = await getStorefrontOrder({
+              orderId: id,
+              customerId: session?.id || null,
+              trackingToken: trackingToken || null,
+            });
+          }
+        } catch (syncErr) {
+          console.warn("[PAYMENT_AUTO_SYNC_WARN] Falha ao verificar pagamento:", syncErr);
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,

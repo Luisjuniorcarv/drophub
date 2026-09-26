@@ -76,7 +76,11 @@ export class MercadoPagoGateway implements PaymentGateway {
         last_name: input.payer.name.split(" ").slice(1).join(" ") || undefined,
         ...(cleanCpf ? { identification: { type: "CPF", number: cleanCpf } } : {}),
       },
-      notification_url: process.env.MERCADOPAGO_NOTIFICATION_URL || undefined,
+      notification_url:
+        process.env.MERCADOPAGO_NOTIFICATION_URL ||
+        (process.env.NEXT_PUBLIC_APP_URL
+          ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/api/webhooks/payments/mercadopago`
+          : "https://drophub-drophub.dvzzxm.easypanel.host/api/webhooks/payments/mercadopago"),
     };
 
     if (input.method === PaymentMethod.PIX) {
