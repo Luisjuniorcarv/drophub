@@ -1,5 +1,7 @@
 import { SupplierAdapter } from "./adapters/supplier-adapter";
 import { TestSupplierAdapter } from "./adapters/test-supplier-adapter";
+import { AliExpressAdapter } from "./adapters/aliexpress-adapter";
+import { CJDropshippingAdapter } from "./adapters/cj-dropshipping-adapter";
 import {
   SupplierCapability,
   SupplierProviderDefinition,
@@ -8,11 +10,29 @@ import {
 } from "./types";
 
 let globalTestAdapterInstance: TestSupplierAdapter | null = null;
+let globalAliExpressAdapterInstance: AliExpressAdapter | null = null;
+let globalCJDropshippingAdapterInstance: CJDropshippingAdapter | null = null;
 
 /**
  * Catálogo Oficial de Provedores de Fornecedores Suportados pelo DropHub
  */
 export const REGISTERED_SUPPLIER_PROVIDERS: readonly SupplierProviderDefinition[] = [
+  {
+    key: "ALIEXPRESS",
+    name: "AliExpress & DSers (Dropshipping Automático)",
+    description: "Automação completa para envio de pedidos e compras no AliExpress via DSers/Webhook.",
+    capabilities: ALL_SUPPLIER_CAPABILITIES,
+    isAvailable: true,
+    isMock: false,
+  },
+  {
+    key: "CJ_DROPSHIPPING",
+    name: "CJ Dropshipping Oficial (API 2.0)",
+    description: "Integração direta com o catálogo global, faturamento e despacho do CJ Dropshipping.",
+    capabilities: ALL_SUPPLIER_CAPABILITIES,
+    isAvailable: true,
+    isMock: false,
+  },
   {
     key: "TEST",
     name: "Fornecedor de Testes (Mock Determinístico)",
@@ -194,6 +214,20 @@ export function getSupplierAdapter(providerOrSupplierName?: string | null): Supp
   const normalized = (providerOrSupplierName || "").toUpperCase().trim();
 
   switch (normalized) {
+    case "ALIEXPRESS":
+    case "DSERS":
+    case "ALIEXPRESS_DSERS":
+      if (!globalAliExpressAdapterInstance) {
+        globalAliExpressAdapterInstance = new AliExpressAdapter();
+      }
+      return globalAliExpressAdapterInstance;
+    case "CJ_DROPSHIPPING":
+    case "CJDROPSHIPPING":
+    case "CJ":
+      if (!globalCJDropshippingAdapterInstance) {
+        globalCJDropshippingAdapterInstance = new CJDropshippingAdapter();
+      }
+      return globalCJDropshippingAdapterInstance;
     case "TEST":
     case "TEST_SUPPLIER":
     case "DEFAULT":
@@ -205,6 +239,14 @@ export function getSupplierAdapter(providerOrSupplierName?: string | null): Supp
     case "TINY":
       return new UnconfiguredSupplierAdapter(normalized);
     default:
+      if (normalized.includes("ALIEXPRESS") || normalized.includes("DSERS")) {
+        if (!globalAliExpressAdapterInstance) globalAliExpressAdapterInstance = new AliExpressAdapter();
+        return globalAliExpressAdapterInstance;
+      }
+      if (normalized.includes("CJ")) {
+        if (!globalCJDropshippingAdapterInstance) globalCJDropshippingAdapterInstance = new CJDropshippingAdapter();
+        return globalCJDropshippingAdapterInstance;
+      }
       return getTestSupplierAdapter();
   }
 }

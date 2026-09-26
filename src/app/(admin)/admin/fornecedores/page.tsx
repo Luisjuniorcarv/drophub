@@ -857,11 +857,13 @@ export default function SuppliersPage() {
                     onChange={(e) => setIntegrationProvider(e.target.value)}
                     className="w-full px-3 py-2 text-sm bg-slate-950 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-emerald-500"
                   >
+                    <option value="ALIEXPRESS">ALIEXPRESS & DSERS (Dropshipping Automático)</option>
+                    <option value="CJ_DROPSHIPPING">CJ DROPSHIPPING (API Oficial Automática)</option>
                     <option value="TEST">TEST (Sandbox de Simulação)</option>
-                    <option value="GENERIC_REST">GENERIC_REST (API REST Padrão)</option>
+                    <option value="GENERIC_REST">GENERIC_REST (API REST Genérica)</option>
                   </select>
                   <p className="text-[11px] text-slate-500">
-                    Use TEST para homologação local ou GENERIC_REST para integração com gateway.
+                    Selecione ALIEXPRESS (Opção A) ou CJ DROPSHIPPING (Opção B) para despacho automatizado.
                   </p>
                 </div>
 
