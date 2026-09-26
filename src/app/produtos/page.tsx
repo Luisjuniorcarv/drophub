@@ -5,8 +5,10 @@ import { ProductCard } from "@/components/storefront/ProductCard";
 import { getStorefrontProducts, getStorefrontCategories } from "@/modules/storefront/service";
 import { SlidersHorizontal, ChevronLeft, ChevronRight, Search } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 interface Props {
-  searchParams: Promise<{
+  searchParams?: Promise<{
     categorySlug?: string;
     categoria?: string;
     q?: string;
@@ -19,26 +21,38 @@ interface Props {
 }
 
 export default async function CatalogPage(props: Props) {
-  const searchParams = await props.searchParams;
+  const resolvedParams = props?.searchParams ? await props.searchParams : {};
+  const searchParams = resolvedParams || {};
   const categorySlug = searchParams.categorySlug || searchParams.categoria || undefined;
   const search = searchParams.q || searchParams.busca || undefined;
   const sort = (searchParams.sort as any) || "newest";
   const page = Math.max(1, Number(searchParams.page) || 1);
-  const minPrice = searchParams.minPrice ? Number(searchParams.minPrice) : undefined;
-  const maxPrice = searchParams.maxPrice ? Number(searchParams.maxPrice) : undefined;
+  const minPrice = searchParams.minPrice && !isNaN(Number(searchParams.minPrice)) ? Number(searchParams.minPrice) : undefined;
+  const maxPrice = searchParams.maxPrice && !isNaN(Number(searchParams.maxPrice)) ? Number(searchParams.maxPrice) : undefined;
 
-  const [categories, { products, pagination }] = await Promise.all([
-    getStorefrontCategories(),
-    getStorefrontProducts({
-      categorySlug,
-      search,
-      sort,
-      page,
-      minPrice,
-      maxPrice,
-      limit: 12,
-    }),
-  ]);
+  let categories: any[] = [];
+  let products: any[] = [];
+  let pagination = { total: 0, page: 1, limit: 12, totalPages: 1 };
+
+  try {
+    const [cats, result] = await Promise.all([
+      getStorefrontCategories(),
+      getStorefrontProducts({
+        categorySlug,
+        search,
+        sort,
+        page,
+        minPrice,
+        maxPrice,
+        limit: 12,
+      }),
+    ]);
+    categories = cats || [];
+    products = result?.products || [];
+    pagination = result?.pagination || pagination;
+  } catch (err) {
+    console.error("[CATALOG_PAGE_ERROR]", err);
+  }
 
   const activeCategory = categories.find((c) => c.slug === categorySlug);
 

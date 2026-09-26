@@ -7,9 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { getStorefrontProducts } from "@/modules/storefront/service";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ sort?: string; page?: string }>;
+  searchParams?: Promise<{ sort?: string; page?: string }>;
 }
 
 export async function generateMetadata(props: Props) {
@@ -28,7 +30,8 @@ export async function generateMetadata(props: Props) {
 
 export default async function CategoryPage(props: Props) {
   const { slug } = await props.params;
-  const searchParams = await props.searchParams;
+  const resolvedParams = props?.searchParams ? await props.searchParams : {};
+  const searchParams = resolvedParams || {};
   const sort = (searchParams.sort as any) || "newest";
   const page = Math.max(1, Number(searchParams.page) || 1);
 

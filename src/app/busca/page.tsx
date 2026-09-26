@@ -5,8 +5,10 @@ import { ProductCard } from "@/components/storefront/ProductCard";
 import { getStorefrontProducts } from "@/modules/storefront/service";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 interface Props {
-  searchParams: Promise<{
+  searchParams?: Promise<{
     q?: string;
     busca?: string;
     sort?: string;
@@ -15,7 +17,8 @@ interface Props {
 }
 
 export async function generateMetadata(props: Props) {
-  const searchParams = await props.searchParams;
+  const resolvedParams = props?.searchParams ? await props.searchParams : {};
+  const searchParams = resolvedParams || {};
   const q = searchParams.q || searchParams.busca || "";
   return {
     title: q ? `Busca por "${q}" - DropHub Store` : "Busca de Produtos - DropHub Store",
@@ -23,7 +26,8 @@ export async function generateMetadata(props: Props) {
 }
 
 export default async function SearchPage(props: Props) {
-  const searchParams = await props.searchParams;
+  const resolvedParams = props?.searchParams ? await props.searchParams : {};
+  const searchParams = resolvedParams || {};
   const search = searchParams.q || searchParams.busca || "";
   const sort = (searchParams.sort as any) || "newest";
   const page = Math.max(1, Number(searchParams.page) || 1);

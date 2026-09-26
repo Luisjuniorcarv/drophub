@@ -86,64 +86,81 @@ export async function getStorefrontHome() {
  * Consulta catálogo público de produtos com filtros e paginação
  */
 export async function getStorefrontProducts(filters: StorefrontProductFilter) {
-  const page = Math.max(1, filters.page || 1);
-  const limit = Math.min(50, Math.max(1, filters.limit || 12));
-  const skip = (page - 1) * limit;
+  try {
+    const page = Math.max(1, filters.page || 1);
+    const limit = Math.min(50, Math.max(1, filters.limit || 12));
+    const skip = (page - 1) * limit;
 
-  const where: any = {
-    status: ProductStatus.ACTIVE,
-    active: true,
-  };
+    const where: any = {
+      status: ProductStatus.ACTIVE,
+      active: true,
+    };
 
-  if (filters.categorySlug) {
-    where.category = { slug: filters.categorySlug, active: true };
-  }
+    if (filters.categorySlug) {
+      where.category = { slug: filters.categorySlug, active: true };
+    }
 
-  if (filters.search) {
-    const q = filters.search.trim();
-    where.OR = [
-      { name: { contains: q, mode: "insensitive" } },
-      { sku: { contains: q, mode: "insensitive" } },
-      { description: { contains: q, mode: "insensitive" } },
-      { shortDescription: { contains: q, mode: "insensitive" } },
-    ];
-  }
+    if (filters.search) {
+      const q = filters.search.trim();
+      where.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { sku: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        { shortDescription: { contains: q, mode: "insensitive" } },
+      ];
+    }
 
-  if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
-    where.sellingPrice = {};
-    if (filters.minPrice !== undefined) where.sellingPrice.gte = new Decimal(filters.minPrice);
-    if (filters.maxPrice !== undefined) where.sellingPrice.lte = new Decimal(filters.maxPrice);
-  }
+    if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+      where.sellingPrice = {};
+      if (filters.minPrice !== undefined && !isNaN(Number(filters.minPrice))) {
+        where.sellingPrice.gte = new Decimal(filters.minPrice);
+      }
+      if (filters.maxPrice !== undefined && !isNaN(Number(filters.maxPrice))) {
+        where.sellingPrice.lte = new Decimal(filters.maxPrice);
+      }
+    }
 
-  let orderBy: any = { createdAt: "desc" };
-  if (filters.sort === "price_asc") orderBy = { sellingPrice: "asc" };
-  else if (filters.sort === "price_desc") orderBy = { sellingPrice: "desc" };
-  else if (filters.sort === "name_asc") orderBy = { name: "asc" };
+    let orderBy: any = { createdAt: "desc" };
+    if (filters.sort === "price_asc") orderBy = { sellingPrice: "asc" };
+    else if (filters.sort === "price_desc") orderBy = { sellingPrice: "desc" };
+    else if (filters.sort === "name_asc") orderBy = { name: "asc" };
 
-  const [total, products] = await Promise.all([
-    prisma.product.count({ where }),
-    prisma.product.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy,
-      include: {
-        images: { orderBy: [{ isCover: "desc" }, { position: "asc" }] },
-        category: { select: { id: true, name: true, slug: true } },
-        variants: { where: { active: true } },
+    const [total, products] = await Promise.all([
+      prisma.product.count({ where }),
+      prisma.product.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          images: { orderBy: [{ isCover: "desc" }, { position: "asc" }] },
+          category: { select: { id: true, name: true, slug: true } },
+          variants: { where: { active: true } },
+        },
+      }),
+    ]);
+
+    return {
+      products: products.map(formatProductSummary),
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
       },
-    }),
-  ]);
-
-  return {
-    products: products.map(formatProductSummary),
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
+    };
+  } catch (error) {
+    console.error("[STOREFRONT_PRODUCTS_ERROR]", error);
+    return {
+      products: [],
+      pagination: {
+        total: 0,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      },
+    };
+  }
 }
 
 /**
@@ -201,23 +218,28 @@ export async function getStorefrontProductBySlug(slug: string) {
  * Consulta lista de categorias ativas
  */
 export async function getStorefrontCategories() {
-  const categories = await prisma.category.findMany({
-    where: { active: true },
-    orderBy: { name: "asc" },
-    include: {
-      _count: {
-        select: { products: { where: { status: ProductStatus.ACTIVE, active: true } } },
+  try {
+    const categories = await prisma.category.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      include: {
+        _count: {
+          select: { products: { where: { status: ProductStatus.ACTIVE, active: true } } },
+        },
       },
-    },
-  });
+    });
 
-  return categories.map((c) => ({
-    id: c.id,
-    name: c.name,
-    slug: c.slug,
-    description: c.description,
-    productsCount: c._count.products,
-  }));
+    return categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      productsCount: c._count.products,
+    }));
+  } catch (error) {
+    console.error("[STOREFRONT_CATEGORIES_ERROR]", error);
+    return [];
+  }
 }
 
 /**
