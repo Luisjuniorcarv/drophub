@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
           status: "unhealthy",
           database: "disconnected",
           error: "Conexão com o banco de dados falhou",
+          details: error.message,
           timestamp: new Date().toISOString(),
         },
         { status: 503 }

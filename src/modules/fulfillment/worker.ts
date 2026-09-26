@@ -39,7 +39,7 @@ export async function processFulfillmentJobs(
   let autoCreatedCount = 0;
   const unfulfilledPaidOrders = await prisma.order.findMany({
     where: {
-      status: OrderStatus.PAID,
+      status: { in: [OrderStatus.PAID, OrderStatus.AWAITING_SUPPLIER] },
       fulfillmentOrders: { none: {} },
     },
     take: batchSize,

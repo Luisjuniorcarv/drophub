@@ -2,6 +2,8 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { publishDomainEvent } from "@/modules/automations/outbox";
+import { DOMAIN_EVENTS } from "@/modules/automations/events";
 
 const JWT_SECRET = process.env.JWT_SECRET || "drophub_super_secret_jwt_key_at_least_32_characters_long_2026";
 const CUSTOMER_COOKIE_NAME = "drophub_customer_session";
@@ -183,6 +185,26 @@ export async function registerCustomer(data: {
       passwordHash,
     },
   });
+
+  try {
+    await publishDomainEvent(prisma, {
+      type: DOMAIN_EVENTS.CUSTOMER_CREATED,
+      entityType: "Customer",
+      entityId: customer.id,
+      data: {
+        id: customer.id,
+        customerId: customer.id,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        stage: "lead",
+        source: "storefront_registration",
+        createdAt: new Date().toISOString(),
+      },
+    });
+  } catch (eventErr) {
+    console.error("[REGISTER_CUSTOMER_EVENT_ERROR]", eventErr);
+  }
 
   const token = await signCustomerToken({
     id: customer.id,

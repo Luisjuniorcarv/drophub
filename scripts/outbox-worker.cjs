@@ -71,7 +71,7 @@ async function sendWebhookPayload(params) {
     const durationMs = Date.now() - startTime;
 
     const rawText = await response.text().catch(() => "");
-    responseBody = rawText ? rawText.slice(0, 1000) : null;
+    responseBody = rawText ? sanitizeForDb(rawText.slice(0, 1000)) : null;
 
     if (response.ok) {
       success = true;
@@ -82,9 +82,14 @@ async function sendWebhookPayload(params) {
     return { success, statusCode, durationMs, responseBody, errorMessage, headersSent };
   } catch (err) {
     const durationMs = Date.now() - startTime;
-    errorMessage = err.name === "AbortError" ? "Timeout 6000ms" : err.message;
+    errorMessage = err.name === "AbortError" ? "Timeout 6000ms" : sanitizeForDb(err.message);
     return { success: false, statusCode: null, durationMs, responseBody: null, errorMessage, headersSent };
   }
+}
+
+function sanitizeForDb(str) {
+  if (!str) return null;
+  return String(str).replace(/[\uD800-\uDFFF]/g, '').replace(/[^\x00-\x7F\xA0-\xFF]/g, '');
 }
 
 async function processOutboxBatch() {

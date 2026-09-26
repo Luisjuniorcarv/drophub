@@ -79,7 +79,7 @@ export async function sendWebhookPayload(params: {
     const durationMs = Date.now() - startTime;
 
     const rawText = await response.text().catch(() => "");
-    responseBody = rawText ? rawText.slice(0, 1000) : null; // truncar para log limpo
+    responseBody = rawText ? sanitizeForDb(rawText.slice(0, 1000)) : null; // truncar para log limpo
 
     if (response.ok) {
       success = true;
@@ -100,7 +100,7 @@ export async function sendWebhookPayload(params: {
     errorMessage =
       err.name === "AbortError"
         ? "Timeout: Endpoint não respondeu em até 6000ms"
-        : err.message || "Erro de conexão de rede";
+        : sanitizeForDb(err.message || "Erro de conexão de rede");
 
     return {
       success: false,
@@ -111,6 +111,11 @@ export async function sendWebhookPayload(params: {
       headersSent,
     };
   }
+}
+
+function sanitizeForDb(str: string | null | undefined): string | null {
+  if (!str) return null;
+  return String(str).replace(/[\uD800-\uDFFF]/g, "").replace(/[^\x00-\x7F\xA0-\xFF]/g, "");
 }
 
 /**
